@@ -9,9 +9,7 @@ import Text.HTML.TagSoup.Tree
 import Data.String
 import Control.Applicative
 import Codec.Binary.UTF8.String
--- import Network.HTTP
--- import Codec.Text.IConv
--- import Data.ByteString.Lazy.Char8 (pack, unpack)
+import Debug.Trace
 
 type UserName = String
 
@@ -54,21 +52,29 @@ entryLinks ((TagOpen "li" [("class", "archive archive-section")]) : (TagOpen "a"
 entryLinks (_:ts) = entryLinks ts
 
 -- archiveSections :: [TagTree] -> [[TagTree]]
-archiveSections [] = []
-archiveSections ((TagBranch "li" [("class", "archive archive-section")] tree):ts) = tree : archiveSections ts
-archiveSections ((TagBranch _ _ tree):ts) = (concat $ archiveSections tree) : archiveSections ts
-archiveSections (_:ts) = archiveSections ts
+archiveSections tts = concat $ _archiveSections tts
+_archiveSections [] = []
+_archiveSections ((TagBranch "li" [("class", "archive archive-section")] tree):ts) = tree : _archiveSections ts
+_archiveSections ((TagBranch _ _ tree):ts) = (concat $ _archiveSections tree) : _archiveSections ts
+_archiveSections (_:ts) = _archiveSections ts
+
+-- archiveSectionsのデバッグ用
+as1 [] = []
+as1 ((TagBranch "li" [("class", "archive archive-section")] tree):ts)
+    = trace ("### archive-section ###\n--- tree ---(" ++ show (length tree) ++ ")\n" ++ show tree ++ "\n--- ts ---" ++ show (length ts) ++ ")\n" ++ show ts ++ "\n")
+            (tree : (as1 ts))
+as1 ((TagBranch _ _ tree):ts) = ((concat $ as1 tree) : as1 ts)
+as1 (_:ts) = (as1 ts)
+-- as1 ((TagBranch _ _ tree):ts) = trace ("### TagBranch _ _ ###\n") ((concat $ as1 tree) : (as1 ts))
+-- as1 (_:ts) = trace ("### _:ts ###\n") (as1 ts)
+
 
 links [] = []
 links ((TagBranch "a" [("href", url)] [(TagLeaf (TagText title))]):ts) = (url, title): links ts
 links (_:ts) = links ts
 
 entryLinksTitles :: [Tag String] -> [(Url, String)]
-entryLinksTitles tags = links ((archiveSections $ tagTree tags)!!0)
-
--- ("http://d.hatena.ne.jp/suzuki-shin/20120717#1342533311",
---  [TagLeaf (TagText " [haskell]spot\12434\21205\12363\12375\12390\12415\12424\12358\12392\12375\12383\12392\12365\12398\12513\12514")])
-
+entryLinksTitles = links . archiveSections . tagTree
 
 -- 指定したエントリのページを取得する
 getEntryFromUrl :: Url -> IO String
