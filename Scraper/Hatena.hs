@@ -14,7 +14,19 @@ import Debug.Trace
 type UserName = String
 
 -- 指定したはてなユーザーのentryのタイトルとリンクのタプルのリストを返す
--- entryTitleLinksOf :: UserName -> IO [(String, Url)]
+entryLinkTitlesOf :: UserName -> IO [(Url, String)]
+entryLinkTitlesOf user = fst <$> entryLinkTitlesOf' user 0 []
+  where
+    entryLinkTitlesOf' :: UserName -> Int -> [(Url, String)] -> IO ([(Url, String)], Int)
+    entryLinkTitlesOf' user fromNum linkTitles = do
+      (lts, num) <- entryLinkTitlesOf'' user fromNum
+      case lts of
+        [] -> return (linkTitles, num)
+        _ -> entryLinkTitlesOf' user (num + 50) (linkTitles ++ lts)
+    entryLinkTitlesOf'' :: UserName -> Int -> IO ([(Url, String)], Int)
+    entryLinkTitlesOf'' user fromNum = do
+      tags <- parsedArchivePageOf user fromNum
+      return $ (entryLinkTitles tags, fromNum)
 
 -- 指定したはてなユーザーのentryのリンクをリストで返す
 entryLinksOf :: UserName -> IO [Url]
@@ -51,7 +63,7 @@ entryLinks ((TagOpen "li" [("class", "archive archive-section")]) : (TagOpen "a"
                  = url : entryLinks ts
 entryLinks (_:ts) = entryLinks ts
 
--- archiveSections :: [TagTree] -> [[TagTree]]
+archiveSections :: (Eq t, IsString t) => [TagTree t] -> [TagTree t]
 archiveSections tts = concat $ _archiveSections tts
 _archiveSections [] = []
 _archiveSections ((TagBranch "li" [("class", "archive archive-section")] tree):ts) = tree : _archiveSections ts
@@ -73,8 +85,8 @@ links [] = []
 links ((TagBranch "a" [("href", url)] [(TagLeaf (TagText title))]):ts) = (url, title): links ts
 links (_:ts) = links ts
 
-entryLinksTitles :: [Tag String] -> [(Url, String)]
-entryLinksTitles = links . archiveSections . tagTree
+entryLinkTitles :: [Tag String] -> [(Url, String)]
+entryLinkTitles = links . archiveSections . tagTree
 
 -- 指定したエントリのページを取得する
 getEntryFromUrl :: Url -> IO String
