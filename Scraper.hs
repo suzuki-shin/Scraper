@@ -42,12 +42,3 @@ hrefs ((TagOpen "a" [("href", url)]) : ts) = url : hrefs ts
 hrefs ((TagOpen "a" [("href", url), _]) : ts) = url : hrefs ts
 hrefs (_:ts) = hrefs ts
 
--- main :: IO ()
--- main = do
---      tags <- readFile "archive.html"
---      return $ archiveDateLinks tags
---   page <- openURL "http://d.hatena.ne.jp/kazu-yamamoto/archive"
---   writeFile "archive.html" $ convertEncoding "EUC-JP" "UTF-8" page
---   page <- readFile "archive.html"
---   return $ parseTags page
-
