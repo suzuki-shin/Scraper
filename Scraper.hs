@@ -45,7 +45,7 @@ hrefs ((TagOpen "a" [("href", url)]) : ts) = url : hrefs ts
 hrefs ((TagOpen "a" [("href", url), _]) : ts) = url : hrefs ts
 hrefs (_:ts) = hrefs ts
 
--- subTree :: Eq t => (t, Maybe [Attribute t]) -> [TagTree t] -> [TagTree t]
+subTree :: Eq a => Maybe a -> Maybe [Attribute a] -> [TagTree a] -> [TagTree a]
 subTree _ _ [] = []
 subTree (Just tagStr) Nothing (t:ts) = subTreeByTag tagStr (t:ts)
   where
@@ -68,12 +68,3 @@ subTree (Just tagStr) (Just attrs) (t:ts) = subTreeByTagAttrs tagStr attrs (t:ts
       | (tagStr, attrs) == (tagStr', attrs') = subT ++ subTreeByTagAttrs tagStr attrs ts
       | otherwise = subTreeByTagAttrs tagStr attrs subT ++ subTreeByTagAttrs tagStr attrs ts
     subTreeByTagAttrs tagStr attrs ((TagLeaf t'):ts) = subTreeByTagAttrs tagStr attrs ts
-
--- subTree (tagStr, Nothing) ((TagBranch tagStr' attrs' subT):ts)
---   | tagStr == tagStr' = subT ++ subTree (tagStr, Nothing) ts
---   | otherwise = subTree (tagStr, Nothing) subT ++ subTree (tagStr, Nothing) ts
--- subTree (tagStr, Nothing) ((TagLeaf _):ts) = subTree (tagStr, Nothing) ts
--- subTree (tagStr, Just attrs) ((TagBranch tagStr' attrs' subT):ts)
---   | (tagStr, attrs) == (tagStr', attrs') = subT ++ subTree (tagStr, Just attrs) ts
---   | otherwise = subTree (tagStr, Just attrs) subT ++ subTree (tagStr, Just attrs) ts
--- subTree (tagStr, Just attrs) ((TagLeaf _):ts) = subTree (tagStr, Just attrs) ts
