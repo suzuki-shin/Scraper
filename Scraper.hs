@@ -63,7 +63,7 @@ subTree Nothing (Just attrs) (t:ts) = subTreeByAttrs attrs (t:ts)
     subTreeByAttrs attrs ((TagLeaf t'):ts) = subTreeByAttrs attrs ts
 subTree (Just tagStr) (Just attrs) (t:ts) = subTreeByTagAttrs tagStr attrs (t:ts)
   where
-    subTreeByAttrs _ _ [] = []
+    subTreeByTagAttrs _ _ [] = []
     subTreeByTagAttrs tagStr attrs ((TagBranch tagStr' attrs' subT):ts)
       | (tagStr, attrs) == (tagStr', attrs') = subT ++ subTreeByTagAttrs tagStr attrs ts
       | otherwise = subTreeByTagAttrs tagStr attrs subT ++ subTreeByTagAttrs tagStr attrs ts
