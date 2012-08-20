@@ -9,9 +9,15 @@ import Text.HTML.TagSoup.Tree
 import Data.String
 import Control.Applicative
 import Codec.Binary.UTF8.String
+import Data.Time.Calendar
+import Data.List.Split
 -- import Debug.Trace
 
 type UserName = String
+
+-- 指定したはてなユーザーのentryのURLとタイトルと書かれた日のタプルのリストを返す
+entryUrlTitleDaysOf :: UserName -> IO [(Url, String, Day)]
+entryUrlTitleDaysOf = undefined
 
 -- 指定したはてなユーザーのentryのタイトルとリンクのタプルのリストを返す
 entryUrlTitlesOf :: UserName -> IO [(Url, String)]
@@ -90,6 +96,17 @@ links (_:ts) = links ts
 
 entryUrlTitles :: [Tag String] -> [(Url, String)]
 entryUrlTitles = links . archiveSections . tagTree
+
+entryUrlTitleDays :: [Tag String] -> [(Url, String, Day)]
+entryUrlTitleDays = map (\(url, title) -> (url, title, dayFromUrl url)) . entryUrlTitles
+
+dayFromUrl :: Url -> Day
+dayFromUrl url = fromGregorian ((read yyyy) :: Integer)
+                               ((read mm) :: Int)
+                               ((read dd) :: Int)
+                   where
+                     yyyymmdd = (sepByOneOf "/#" ((splitOn "http://d.hatena.ne.jp/" url)!!1))!!1
+                     [yyyy, mm, dd] = splitPlaces [4,2,2] yyyymmdd
 
 -- 指定したエントリのページを取得する
 getEntryFromUrl :: Url -> IO String
