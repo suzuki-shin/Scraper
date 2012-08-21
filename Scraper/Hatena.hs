@@ -56,15 +56,6 @@ parsedArchivePageOf user fromNum = do
   page <- archivePageOf user fromNum
   return $ parseTags $ convertEncoding "EUC-JP" "UTF-8" page
 
--- http://d.hatena.ne.jp/<user>/archive をパースしたtagからentryのリンクを抜き出す
--- entryUrls :: forall a. (Eq a, Data.String.IsString a) => [Tag a] -> [a]
--- entryUrls [] = []
--- entryUrls ((TagOpen "li" [("class", "archive archive-section")]) : (TagOpen "a" [("href", url)]) : ts)
---                  = url : entryUrls ts
--- entryUrls ((TagOpen "li" [("class", "archive archive-section")]) : (TagOpen "a" [("href", url), _]) : ts)
---                  = url : entryUrls ts
--- entryUrls (_:ts) = entryUrls ts
-
 archiveSections :: (Eq t, IsString t) => [TagTree t] -> [TagTree t]
 archiveSections tts = concat $ _archiveSections tts
   where
@@ -73,17 +64,6 @@ archiveSections tts = concat $ _archiveSections tts
                      = tree : _archiveSections ts
     _archiveSections ((TagBranch _ _ tree):ts) = (concat $ _archiveSections tree) : _archiveSections ts
     _archiveSections (_:ts) = _archiveSections ts
-
--- archiveSectionsのデバッグ用
--- as1 [] = []
--- as1 ((TagBranch "li" [("class", "archive archive-section")] tree):ts)
---     = trace ("### archive-section ###\n--- tree ---(" ++ show (length tree) ++ ")\n" ++ show tree ++ "\n--- ts ---" ++ show (length ts) ++ ")\n" ++ show ts ++ "\n")
---             (tree : (as1 ts))
--- as1 ((TagBranch _ _ tree):ts) = ((concat $ as1 tree) : as1 ts)
--- as1 (_:ts) = (as1 ts)
--- as1 ((TagBranch _ _ tree):ts) = trace ("### TagBranch _ _ ###\n") ((concat $ as1 tree) : (as1 ts))
--- as1 (_:ts) = trace ("### _:ts ###\n") (as1 ts)
-
 
 links :: [TagTree String] -> [(Url, String)]
 links [] = []
