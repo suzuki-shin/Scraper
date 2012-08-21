@@ -36,21 +36,9 @@ entryUrlTitlesOf user = fst <$> entryUrlTitlesOf' 0 []
 
 -- 指定したはてなユーザーのentryのリンクをリストで返す
 entryUrlsOf :: UserName -> IO [Url]
-entryUrlsOf user = fst <$> entryUrlsOf' 0 []
-  where
-    entryUrlsOf' :: Int -> [Url] -> IO ([Url], Int)
-    entryUrlsOf' fromNum urls = do
-      (ls, num) <- entryUrlsOf'' fromNum
-    --   print ls
-      case ls of
-        [] -> return (urls ++ [], num)
-        _ -> entryUrlsOf' (num + 50) (urls ++ ls)
-
-    entryUrlsOf'' :: Int -> IO ([Url], Int)
-    entryUrlsOf'' fromNum = do
-      tags <- parsedArchivePageOf user fromNum
-      return $ (entryUrls tags, fromNum)
-
+entryUrlsOf user = do
+  urlTitles <- entryUrlTitlesOf user
+  return $ map (\(url, _) -> url) urlTitles
 
 archivePageOf :: UserName -> Int -> IO String
 archivePageOf user fromNum = openURL $ "http://d.hatena.ne.jp/" ++ user ++ "/archive?of=" ++ show fromNum
