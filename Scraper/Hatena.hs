@@ -1,7 +1,13 @@
 {-# OPTIONS -Wall #-}
 {-# LANGUAGE OverloadedStrings, RankNTypes #-}
 
-module Scraper.Hatena where
+module Scraper.Hatena (
+    entryUrlTitleDaysOf
+  , entryUrlTitlesOf
+  , entryUrlsOf
+  , parsedArchivePageOf
+  , getEntryFromUrl
+  ) where
 
 import Scraper
 import Text.HTML.TagSoup
@@ -17,28 +23,30 @@ type UserName = String
 
 -- 指定したはてなユーザーのentryのURLとタイトルと書かれた日のタプルのリストを返す
 entryUrlTitleDaysOf :: UserName -> IO [(Url, String, Day)]
-entryUrlTitleDaysOf = undefined
+entryUrlTitleDaysOf user = fst <$> entryUrlTitleDaysOf' 0 []
+  where
+    entryUrlTitleDaysOf' :: Int -> [(Url, String, Day)] -> IO ([(Url, String, Day)], Int)
+    entryUrlTitleDaysOf' fromNum urlTitleDays = do
+      (lts, num) <- entryUrlTitleDaysOf'' fromNum
+      case lts of
+        [] -> return (urlTitleDays, num)
+        _ -> entryUrlTitleDaysOf' (num + 50) (urlTitleDays ++ lts)
+    entryUrlTitleDaysOf'' :: Int -> IO ([(Url, String, Day)], Int)
+    entryUrlTitleDaysOf'' fromNum = do
+      tags <- parsedArchivePageOf user fromNum
+      return $ (entryUrlTitleDays tags, fromNum)
 
 -- 指定したはてなユーザーのentryのタイトルとリンクのタプルのリストを返す
 entryUrlTitlesOf :: UserName -> IO [(Url, String)]
-entryUrlTitlesOf user = fst <$> entryUrlTitlesOf' 0 []
-  where
-    entryUrlTitlesOf' :: Int -> [(Url, String)] -> IO ([(Url, String)], Int)
-    entryUrlTitlesOf' fromNum urlTitles = do
-      (lts, num) <- entryUrlTitlesOf'' fromNum
-      case lts of
-        [] -> return (urlTitles, num)
-        _ -> entryUrlTitlesOf' (num + 50) (urlTitles ++ lts)
-    entryUrlTitlesOf'' :: Int -> IO ([(Url, String)], Int)
-    entryUrlTitlesOf'' fromNum = do
-      tags <- parsedArchivePageOf user fromNum
-      return $ (entryUrlTitles tags, fromNum)
+entryUrlTitlesOf user = do
+  utds <- entryUrlTitleDaysOf user
+  return $ map (\(url, title, _) -> (url, title)) utds
 
 -- 指定したはてなユーザーのentryのリンクをリストで返す
 entryUrlsOf :: UserName -> IO [Url]
 entryUrlsOf user = do
-  urlTitles <- entryUrlTitlesOf user
-  return $ map (\(url, _) -> url) urlTitles
+  urlTitles <- entryUrlTitleDaysOf user
+  return $ map (\(url, _, _) -> url) urlTitles
 
 archivePageOf :: UserName -> Int -> IO String
 archivePageOf user fromNum = openURL $ "http://d.hatena.ne.jp/" ++ user ++ "/archive?of=" ++ show fromNum
@@ -49,13 +57,13 @@ parsedArchivePageOf user fromNum = do
   return $ parseTags $ convertEncoding "EUC-JP" "UTF-8" page
 
 -- http://d.hatena.ne.jp/<user>/archive をパースしたtagからentryのリンクを抜き出す
-entryUrls :: forall a. (Eq a, Data.String.IsString a) => [Tag a] -> [a]
-entryUrls [] = []
-entryUrls ((TagOpen "li" [("class", "archive archive-section")]) : (TagOpen "a" [("href", url)]) : ts)
-                 = url : entryUrls ts
-entryUrls ((TagOpen "li" [("class", "archive archive-section")]) : (TagOpen "a" [("href", url), _]) : ts)
-                 = url : entryUrls ts
-entryUrls (_:ts) = entryUrls ts
+-- entryUrls :: forall a. (Eq a, Data.String.IsString a) => [Tag a] -> [a]
+-- entryUrls [] = []
+-- entryUrls ((TagOpen "li" [("class", "archive archive-section")]) : (TagOpen "a" [("href", url)]) : ts)
+--                  = url : entryUrls ts
+-- entryUrls ((TagOpen "li" [("class", "archive archive-section")]) : (TagOpen "a" [("href", url), _]) : ts)
+--                  = url : entryUrls ts
+-- entryUrls (_:ts) = entryUrls ts
 
 archiveSections :: (Eq t, IsString t) => [TagTree t] -> [TagTree t]
 archiveSections tts = concat $ _archiveSections tts
@@ -94,7 +102,7 @@ dayFromUrl url = fromGregorian ((read yyyy) :: Integer)
                                ((read dd) :: Int)
                    where
                      yyyymmdd = (sepByOneOf "/#" ((splitOn "http://d.hatena.ne.jp/" url)!!1))!!1
-                     [yyyy, mm, dd] = splitPlaces [4,2,2] yyyymmdd
+                     [yyyy, mm, dd] = splitPlaces [(4::Int),2,2] yyyymmdd
 
 -- 指定したエントリのページを取得する
 getEntryFromUrl :: Url -> IO String
