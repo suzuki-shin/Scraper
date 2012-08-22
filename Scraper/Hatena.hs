@@ -65,11 +65,6 @@ archiveSections tts = concat $ _archiveSections tts
     _archiveSections ((TagBranch _ _ tree):ts) = (concat $ _archiveSections tree) : _archiveSections ts
     _archiveSections (_:ts) = _archiveSections ts
 
-links :: [TagTree String] -> [(Url, String)]
-links [] = []
-links ((TagBranch "a" [("href", url)] [(TagLeaf (TagText title))]):ts) = (url, title): links ts
-links (_:ts) = links ts
-
 entryUrlTitles :: [Tag String] -> [(Url, String)]
 entryUrlTitles = links . archiveSections . tagTree
 
