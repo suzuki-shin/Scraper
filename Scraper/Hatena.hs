@@ -58,15 +58,38 @@ parsedArchivePageOf user fromNum = do
   page <- archivePageOf user fromNum
   return $ parseTags $ convertEncoding "EUC-JP" "UTF-8" page
 
+-- | archiveSections
+-- >>> let trees = tagTree $ parseTags "<body><h1>hoge</h1><div class=\"fuga\">FUgya!<ul id=\"archive\"><li class=\"archive-section\">not</li><li class=\"archive archive-section\"><a href=\"hoho\">OK</a>OK</li><li>mumu</li><li class=\"archive archive-section\">1233</li></ul><p><li class=\"archive archive-section\"></li></p></body>"
+-- >>> archiveSections trees
+-- [TagBranch "li" [("class","archive archive-section")] [TagBranch "a" [("href","hoho")] [TagLeaf (TagText "OK")],TagLeaf (TagText "OK")],TagBranch "li" [("class","archive archive-section")] [TagLeaf (TagText "1233")],TagBranch "li" [("class","archive archive-section")] []]
 archiveSections :: (Eq t, IsString t) => [TagTree t] -> [TagTree t]
 archiveSections = subTree (Just "li") (Just [("class", "archive archive-section")])
 
+-- | entryUrlTitles
+-- >>> let tags = parseTags "<body><h1>hoge</h1><div class=\"fuga\">FUgya!<ul id=\"archive\"><li class=\"archive-section\">not</li><li class=\"archive archive-section\"><a href=\"hoho\">OK</a>OK</li><li>mumu</li><li class=\"archive archive-section\">1233</li></ul><p><li class=\"archive archive-section\"></li></p></body>"
+-- >>> entryUrlTitles tags
+-- [("hoho","OK")]
 entryUrlTitles :: [Tag String] -> [(Url, String)]
 entryUrlTitles = links . archiveSections . tagTree
 
+-- | entryUrlTitleDays
+-- >>> let tags = parseTags "<body><h1>hoge</h1><div class=\"fuga\">FUgya!<ul id=\"archive\"><li class=\"archive-section\">not</li><li class=\"archive archive-section\"><a href=\"http://d.hatena.ne.jp/hoho/20120808#12345566\">OK</a>OK</li><li>mumu</li><li class=\"archive archive-section\">1233</li></ul><p><li class=\"archive archive-section\"></li></p></body>"
+-- >>> entryUrlTitleDays tags
+-- [("http://d.hatena.ne.jp/hoho/20120808#12345566","OK",2012-08-08)]
 entryUrlTitleDays :: [Tag String] -> [(Url, String, Day)]
 entryUrlTitleDays = map (\(url, title) -> (url, title, dayFromUrl url)) . entryUrlTitles
 
+-- | dayFromUrl
+-- >>> dayFromUrl ""
+-- Nothing
+-- >>> dayFromUrl "http://hoge.fuga"
+-- Nothing
+-- >>> dayFromUrl "http://d.hatena.ne.jp/hoge/20120812#1234325"
+-- Just 2012-08-12
+-- >>> dayFromUrl "http://d.hatena.ne.jp/hoge/2012112#1234325"
+-- Nothing
+-- >>> dayFromUrl "http://d.hatena.ne.jp/suzuki-shin/archive?word=&of=0"
+-- Nothing
 dayFromUrl :: Url -> Day
 dayFromUrl url = fromGregorian ((read yyyy) :: Integer)
                                ((read mm) :: Int)
