@@ -28,8 +28,7 @@ openURL url = simpleHTTP (getRequest url) >>= getResponseBody
 convertEncoding :: EncodingName -> EncodingName -> String -> String
 convertEncoding fromEnc toEnc = decodeString . unpack . convert fromEnc toEnc . pack
 
-writeFileFromUrl :: Url -> FilePath
-                 -> EncodingName -> EncodingName -> IO ()
+writeFileFromUrl :: Url -> FilePath -> EncodingName -> EncodingName -> IO ()
 writeFileFromUrl url fileName fromEnc toEnc = do
   page <- openURL url
   writeFile fileName $ convertEncoding fromEnc toEnc page

@@ -5,7 +5,6 @@ module Scraper.Hatena (
     entryUrlTitleDaysOf
   , entryUrlTitlesOf
   , entryUrlsOf
-  , parsedArchivePageOf
   , getEntryFromUrl
   ) where
 
@@ -20,6 +19,9 @@ import Data.List.Split
 -- import Debug.Trace
 
 type UserName = String
+
+baseUrl :: Url
+baseUrl = "http://d.hatena.ne.jp/"
 
 -- 指定したはてなユーザーのentryのURLとタイトルと書かれた日のタプルのリストを返す
 entryUrlTitleDaysOf :: UserName -> IO [(Url, String, Day)]
@@ -49,7 +51,7 @@ entryUrlsOf user = do
   return $ map (\(url, _, _) -> url) urlTitles
 
 archivePageOf :: UserName -> Int -> IO String
-archivePageOf user fromNum = openURL $ "http://d.hatena.ne.jp/" ++ user ++ "/archive?of=" ++ show fromNum
+archivePageOf user fromNum = openURL $ baseUrl ++ user ++ "/archive?of=" ++ show fromNum
 
 parsedArchivePageOf :: UserName -> Int -> IO [Tag String]
 parsedArchivePageOf user fromNum = do
@@ -57,13 +59,7 @@ parsedArchivePageOf user fromNum = do
   return $ parseTags $ convertEncoding "EUC-JP" "UTF-8" page
 
 archiveSections :: (Eq t, IsString t) => [TagTree t] -> [TagTree t]
-archiveSections tts = concat $ _archiveSections tts
-  where
-    _archiveSections [] = []
-    _archiveSections ((TagBranch "li" [("class", "archive archive-section")] tree):ts)
-                     = tree : _archiveSections ts
-    _archiveSections ((TagBranch _ _ tree):ts) = (concat $ _archiveSections tree) : _archiveSections ts
-    _archiveSections (_:ts) = _archiveSections ts
+archiveSections = subTree (Just "li") (Just [("class", "archive archive-section")])
 
 entryUrlTitles :: [Tag String] -> [(Url, String)]
 entryUrlTitles = links . archiveSections . tagTree
@@ -76,7 +72,7 @@ dayFromUrl url = fromGregorian ((read yyyy) :: Integer)
                                ((read mm) :: Int)
                                ((read dd) :: Int)
                    where
-                     yyyymmdd = (sepByOneOf "/#" ((splitOn "http://d.hatena.ne.jp/" url)!!1))!!1
+                     yyyymmdd = (sepByOneOf "/#" ((splitOn baseUrl url)!!1))!!1
                      [yyyy, mm, dd] = splitPlaces [(4::Int),2,2] yyyymmdd
 
 -- 指定したエントリのページを取得する
