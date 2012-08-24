@@ -1,5 +1,5 @@
 {-# OPTIONS -Wall #-}
-{-# LANGUAGE OverloadedStrings, RankNTypes #-}
+{-# LANGUAGE RankNTypes #-}
 
 module Scraper.Hatena (
     entryUrlTitleDaysOf
@@ -11,11 +11,12 @@ module Scraper.Hatena (
 import Scraper
 import Text.HTML.TagSoup
 import Text.HTML.TagSoup.Tree
-import Data.String
+-- import Data.String
 import Control.Applicative
 import Codec.Binary.UTF8.String
 import Data.Time.Calendar
-import Data.List.Split
+-- import Data.List.Split
+import Text.Regex.Posix
 -- import Debug.Trace
 
 type UserName = String
@@ -24,16 +25,16 @@ baseUrl :: Url
 baseUrl = "http://d.hatena.ne.jp/"
 
 -- 指定したはてなユーザーのentryのURLとタイトルと書かれた日のタプルのリストを返す
-entryUrlTitleDaysOf :: UserName -> IO [(Url, String, Day)]
+entryUrlTitleDaysOf :: UserName -> IO [(Url, String, Maybe Day)]
 entryUrlTitleDaysOf user = fst <$> entryUrlTitleDaysOf' 0 []
   where
-    entryUrlTitleDaysOf' :: Int -> [(Url, String, Day)] -> IO ([(Url, String, Day)], Int)
+    entryUrlTitleDaysOf' :: Int -> [(Url, String, Maybe Day)] -> IO ([(Url, String, Maybe Day)], Int)
     entryUrlTitleDaysOf' fromNum urlTitleDays = do
       (lts, num) <- entryUrlTitleDaysOf'' fromNum
       case lts of
         [] -> return (urlTitleDays, num)
         _ -> entryUrlTitleDaysOf' (num + 50) (urlTitleDays ++ lts)
-    entryUrlTitleDaysOf'' :: Int -> IO ([(Url, String, Day)], Int)
+    entryUrlTitleDaysOf'' :: Int -> IO ([(Url, String, Maybe Day)], Int)
     entryUrlTitleDaysOf'' fromNum = do
       tags <- parsedArchivePageOf user fromNum
       return $ (entryUrlTitleDays tags, fromNum)
@@ -62,7 +63,7 @@ parsedArchivePageOf user fromNum = do
 -- >>> let trees = tagTree $ parseTags "<body><h1>hoge</h1><div class=\"fuga\">FUgya!<ul id=\"archive\"><li class=\"archive-section\">not</li><li class=\"archive archive-section\"><a href=\"hoho\">OK</a>OK</li><li>mumu</li><li class=\"archive archive-section\">1233</li></ul><p><li class=\"archive archive-section\"></li></p></body>"
 -- >>> archiveSections trees
 -- [TagBranch "li" [("class","archive archive-section")] [TagBranch "a" [("href","hoho")] [TagLeaf (TagText "OK")],TagLeaf (TagText "OK")],TagBranch "li" [("class","archive archive-section")] [TagLeaf (TagText "1233")],TagBranch "li" [("class","archive archive-section")] []]
-archiveSections :: (Eq t, IsString t) => [TagTree t] -> [TagTree t]
+archiveSections :: [TagTree String] -> [TagTree String]
 archiveSections = subTree (Just "li") (Just [("class", "archive archive-section")])
 
 -- | entryUrlTitles
@@ -75,8 +76,8 @@ entryUrlTitles = links . archiveSections . tagTree
 -- | entryUrlTitleDays
 -- >>> let tags = parseTags "<body><h1>hoge</h1><div class=\"fuga\">FUgya!<ul id=\"archive\"><li class=\"archive-section\">not</li><li class=\"archive archive-section\"><a href=\"http://d.hatena.ne.jp/hoho/20120808#12345566\">OK</a>OK</li><li>mumu</li><li class=\"archive archive-section\">1233</li></ul><p><li class=\"archive archive-section\"></li></p></body>"
 -- >>> entryUrlTitleDays tags
--- [("http://d.hatena.ne.jp/hoho/20120808#12345566","OK",2012-08-08)]
-entryUrlTitleDays :: [Tag String] -> [(Url, String, Day)]
+-- [("http://d.hatena.ne.jp/hoho/20120808#12345566","OK",Just 2012-08-08)]
+entryUrlTitleDays :: [Tag String] -> [(Url, String, Maybe Day)]
 entryUrlTitleDays = map (\(url, title) -> (url, title, dayFromUrl url)) . entryUrlTitles
 
 -- | dayFromUrl
@@ -90,13 +91,17 @@ entryUrlTitleDays = map (\(url, title) -> (url, title, dayFromUrl url)) . entryU
 -- Nothing
 -- >>> dayFromUrl "http://d.hatena.ne.jp/suzuki-shin/archive?word=&of=0"
 -- Nothing
-dayFromUrl :: Url -> Day
-dayFromUrl url = fromGregorian ((read yyyy) :: Integer)
-                               ((read mm) :: Int)
-                               ((read dd) :: Int)
-                   where
-                     yyyymmdd = (sepByOneOf "/#" ((splitOn baseUrl url)!!1))!!1
-                     [yyyy, mm, dd] = splitPlaces [(4::Int),2,2] yyyymmdd
+dayFromUrl :: Url -> Maybe Day
+dayFromUrl url = let ymd = getYmd url
+                 in case length ymd == 4 of
+                   True -> Just $ fromGregorian ((read (ymd!!1)) :: Integer)
+                                                ((read (ymd!!2)) :: Int)
+                                                ((read (ymd!!3)) :: Int)
+                   _ -> Nothing
+  where
+    getYmd :: Url -> [String]
+    getYmd [] = []
+    getYmd url' = concat $ (url' =~ (baseUrl ++ "[^/]+/([0-9]{4})([0-9]{2})([0-9]{2})") :: [[String]])
 
 -- 指定したエントリのページを取得する
 getEntryFromUrl :: Url -> IO String
