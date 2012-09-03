@@ -20,12 +20,15 @@ import Control.Monad.Trans
 import Data.Time (Day)
 import Data.Text (Text)
 
+-- data BlogType = HatenaDaiary | JugemBlog
+
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persist|
 Blog
     title String
     url String
     author String
     status Bool default=True
+--     blogType BlogType
     deriving Show
 BlogEntry
     title String
@@ -45,12 +48,18 @@ runDB action = withSqliteConn dbpath $ runSqlConn $ do
     runMigration migrateAll
     action
 
-add :: [String] -> IO ()
-add [title, url, author] = runDB $ do
-    _ <- insert $ Blog title url author True
-    return ()
-add _ = error "bad args"
+addBlog :: [String] -> IO ()
+addBlog [title, url, author] = runDB $ do
+  blog <- insert $ Blog title url author True
+  return ()
+addBlog _ = error "bad args"
+
+-- addBlogEntry :: [String] -> IO ()
+addBlogEntry title url body blog updatedAt postedAt = runDB $ do
+  _ <- insert $ BlogEntry title url body blog updatedAt postedAt True
+  return ()
+addBlogEntry _ _ _ _ _ _ = error "bad args"
 
 main = do
   args <- getArgs
-  add args
+  addBlog args
