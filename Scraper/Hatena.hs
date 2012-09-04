@@ -109,7 +109,7 @@ getEntryFromUrl :: Url -> IO String
 getEntryFromUrl url = decodeString <$> openURL url
 
 -- | blogTitle
--- >>> let tags = parseTags "<html><head><title>aaabbbccc</title></head><body><h1>hoge</h1><div class=\"fuga\">FUgya!<ul id=\"archive\"><li class=\"archive-section\">not</li><li class=\"archive archive-section\"><a href=\"http://d.hatena.ne.jp/hoho/20120808#12345566\">OK</a>OK</li><li>mumu</li><li class=\"archive archive-section\">1233</li></ul><p><li class=\"archive archive-section\"></li></p></body></html>"
+-- >>> let tags = parseTags "<html><head><title>aaabbbccc</title></head><body><h1>hoge</h1></body></html>"
 -- >>> blogTitle tags
 -- "aaabbbccc"
 blogTitle :: [Tag String] -> String
