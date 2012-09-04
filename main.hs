@@ -61,5 +61,12 @@ addBlogEntry title url body blog updatedAt postedAt = runDB $ do
 addBlogEntry _ _ _ _ _ _ = error "bad args"
 
 main = do
-  args <- getArgs
-  addBlog args
+  hateDa "suzuki"
+--   args <- getArgs
+--   addBlog args
+
+hateDa :: String -> IO ()
+hateDa user = runDB $ do
+  blog <- selectFirst [BlogAuthor ==. user] [LimitTo 1]
+  liftIO $ print (blog :: Maybe (Entity Blog))
+  return ()
