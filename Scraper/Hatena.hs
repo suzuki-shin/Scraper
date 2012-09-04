@@ -6,6 +6,7 @@ module Scraper.Hatena (
   , entryUrlTitlesOf
   , entryUrlsOf
   , getEntryFromUrl
+  , blogTitleOf
   ) where
 
 import Scraper
@@ -106,3 +107,22 @@ dayFromUrl url = let ymd = getYmd url
 -- 指定したエントリのページを取得する
 getEntryFromUrl :: Url -> IO String
 getEntryFromUrl url = decodeString <$> openURL url
+
+-- | blogTitle
+-- >>> let tags = parseTags "<html><head><title>aaabbbccc</title></head><body><h1>hoge</h1><div class=\"fuga\">FUgya!<ul id=\"archive\"><li class=\"archive-section\">not</li><li class=\"archive archive-section\"><a href=\"http://d.hatena.ne.jp/hoho/20120808#12345566\">OK</a>OK</li><li>mumu</li><li class=\"archive archive-section\">1233</li></ul><p><li class=\"archive archive-section\"></li></p></body></html>"
+-- >>> blogTitle tags
+-- "aaabbbccc"
+blogTitle :: [Tag String] -> String
+blogTitle = titleText . flattenTree . subTree (Just "title") Nothing . tagTree
+  where
+    titleText :: [Tag String] -> String
+    titleText (TagText title:_) = title
+    titleText (_:ts) = titleText ts
+    titleText _ = ""
+
+blogTitleOf :: UserName -> IO String
+blogTitleOf user = do
+  page <- openURL blogUrl
+  return $ blogTitle $ parseTags $ convertEncoding "EUC-JP" "UTF-8" page
+  where
+    blogUrl = baseUrl ++ user
