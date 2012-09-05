@@ -1,5 +1,6 @@
 {-# OPTIONS -Wall #-}
 {-# LANGUAGE QuasiQuotes, TemplateHaskell, TypeFamilies, OverloadedStrings, GeneralizedNewtypeDeriving, GADTs, FlexibleContexts, RankNTypes #-}
+module Main where
 
 import Scraper.Hatena
 -- import Control.Applicative
@@ -48,17 +49,21 @@ runDB action = withSqliteConn dbpath $ runSqlConn $ do
     runMigration migrateAll
     action
 
-addBlog :: [String] -> IO ()
-addBlog [title, url, author] = runDB $ do
+addBlog :: String -> String -> String -> IO ()
+addBlog title url author = runDB $ do
   blog <- insert $ Blog title url author True
   return ()
-addBlog _ = error "bad args"
 
 -- addBlogEntry :: [String] -> IO ()
 addBlogEntry title url body blog updatedAt postedAt = runDB $ do
   _ <- insert $ BlogEntry title url body blog updatedAt postedAt True
   return ()
-addBlogEntry _ _ _ _ _ _ = error "bad args"
+
+addBlogEntries :: [(String, String, String, BlogId, Day)] -> IO ()
+addBlogEntries ((title, url, body, blog, postedAt):xs) = do
+    addBlogEntry title url body blog postedAt postedAt
+    addBlogEntries xs
+    return ()
 
 main = do
   hateDa "suzuki"
@@ -66,7 +71,15 @@ main = do
 --   addBlog args
 
 hateDa :: String -> IO ()
-hateDa user = runDB $ do
-  blog <- selectFirst [BlogAuthor ==. user] [LimitTo 1]
-  liftIO $ print (blog :: Maybe (Entity Blog))
-  return ()
+hateDa user = do
+  title <- blogTitleOf user
+  utds <- entryUrlTitleDaysOf user
+  runDB $ do
+    blog <- selectFirst [BlogAuthor ==. user] [LimitTo 1]
+    case blog of
+      Nothing -> do
+        _ <- insert $ Blog title (blogUrlOf user) user True
+        return ()
+      Just blog -> return ()
+--   liftIO $ print (blog :: Maybe (Entity Blog))
+--   return ()

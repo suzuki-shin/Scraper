@@ -7,6 +7,7 @@ module Scraper.Hatena (
   , entryUrlsOf
   , getEntryFromUrl
   , blogTitleOf
+  , blogUrlOf
   ) where
 
 import Scraper
@@ -123,7 +124,11 @@ blogTitle = titleText . flattenTree . subTree (Just "title") Nothing . tagTree
 -- 指定したユーザーのblogのタイトルを取得する
 blogTitleOf :: UserName -> IO String
 blogTitleOf user = do
-  page <- openURL blogUrl
+  page <- openURL $ blogUrlOf user
   return $ blogTitle $ parseTags $ convertEncoding "EUC-JP" "UTF-8" page
-  where
-    blogUrl = baseUrl ++ user
+
+-- | blogUrlOf
+-- >>> blogUrlOf "suzuki"
+-- "http://d.hatena.ne.jp/suzuki"
+blogUrlOf :: UserName -> String
+blogUrlOf user = baseUrl ++ user
