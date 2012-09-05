@@ -120,6 +120,7 @@ blogTitle = titleText . flattenTree . subTree (Just "title") Nothing . tagTree
     titleText (_:ts) = titleText ts
     titleText _ = ""
 
+-- 指定したユーザーのblogのタイトルを取得する
 blogTitleOf :: UserName -> IO String
 blogTitleOf user = do
   page <- openURL blogUrl
