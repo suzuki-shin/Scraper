@@ -4,6 +4,7 @@
 module Scraper.Jugem (
     lastEid
   , blogUrl
+  , entryUrlsOf
   ) where
 
 import Scraper
@@ -22,7 +23,7 @@ import qualified Data.List as L
 type UserName = String
 
 blogUrl :: UserName -> Url
-blogUrl user = "http://" ++ user ++ ".jugem.ne.jp/"
+blogUrl user = "http://" ++ user ++ ".jugem.jp/"
 
 
 -- | lastEid
@@ -40,3 +41,11 @@ lastEid page = case length eids >= 1 of
   _ -> Nothing
   where
     eids = page =~ "eid=([0-9]+)" :: [[String]]
+
+entryUrlsOf :: UserName -> IO [Url]
+entryUrlsOf user = do
+  let url = blogUrl user
+  page <- openURL url
+  case lastEid page of
+    Nothing       -> return []
+    Just lastEid' -> return $ map ((\eid -> url ++ "?eid=" ++ eid) . show) [1..lastEid']
