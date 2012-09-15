@@ -7,7 +7,6 @@ module Scraper.Hatena (
   , entryUrlsOf
   , getEntryFromUrl
   , blogTitleOf
-  , blogUrlOf
   ) where
 
 import Scraper
@@ -22,27 +21,28 @@ import Text.Regex.Posix
 -- import Debug.Trace
 
 type UserName = String
+type BlogTitle = String
 
 baseUrl :: Url
 baseUrl = "http://d.hatena.ne.jp/"
 
 -- 指定したはてなユーザーのentryのURLとタイトルと書かれた日のタプルのリストを返す
-entryUrlTitleDaysOf :: UserName -> IO [(Url, String, Maybe Day)]
+entryUrlTitleDaysOf :: UserName -> IO [(Url, BlogTitle, Maybe Day)]
 entryUrlTitleDaysOf user = fst <$> entryUrlTitleDaysOf' 0 []
   where
-    entryUrlTitleDaysOf' :: Int -> [(Url, String, Maybe Day)] -> IO ([(Url, String, Maybe Day)], Int)
+    entryUrlTitleDaysOf' :: Int -> [(Url, BlogTitle, Maybe Day)] -> IO ([(Url, BlogTitle, Maybe Day)], Int)
     entryUrlTitleDaysOf' fromNum urlTitleDays = do
       (lts, num) <- entryUrlTitleDaysOf'' fromNum
       case lts of
         [] -> return (urlTitleDays, num)
         _ -> entryUrlTitleDaysOf' (num + 50) (urlTitleDays ++ lts)
-    entryUrlTitleDaysOf'' :: Int -> IO ([(Url, String, Maybe Day)], Int)
+    entryUrlTitleDaysOf'' :: Int -> IO ([(Url, BlogTitle, Maybe Day)], Int)
     entryUrlTitleDaysOf'' fromNum = do
       tags <- parsedArchivePageOf user fromNum
       return $ (entryUrlTitleDays tags, fromNum)
 
 -- 指定したはてなユーザーのentryのタイトルとリンクのタプルのリストを返す
-entryUrlTitlesOf :: UserName -> IO [(Url, String)]
+entryUrlTitlesOf :: UserName -> IO [(Url, BlogTitle)]
 entryUrlTitlesOf user = do
   utds <- entryUrlTitleDaysOf user
   return $ map (\(url, title, _) -> (url, title)) utds
@@ -72,14 +72,14 @@ archiveSections = subTree (Just "li") (Just [("class", "archive archive-section"
 -- >>> let tags = parseTags "<body><h1>hoge</h1><div class=\"fuga\">FUgya!<ul id=\"archive\"><li class=\"archive-section\">not</li><li class=\"archive archive-section\"><a href=\"hoho\">OK</a>OK</li><li>mumu</li><li class=\"archive archive-section\">1233</li></ul><p><li class=\"archive archive-section\"></li></p></body>"
 -- >>> entryUrlTitles tags
 -- [("hoho","OK")]
-entryUrlTitles :: [Tag String] -> [(Url, String)]
+entryUrlTitles :: [Tag String] -> [(Url, BlogTitle)]
 entryUrlTitles = links . archiveSections . tagTree
 
 -- | entryUrlTitleDays
 -- >>> let tags = parseTags "<body><h1>hoge</h1><div class=\"fuga\">FUgya!<ul id=\"archive\"><li class=\"archive-section\">not</li><li class=\"archive archive-section\"><a href=\"http://d.hatena.ne.jp/hoho/20120808#12345566\">OK</a>OK</li><li>mumu</li><li class=\"archive archive-section\">1233</li></ul><p><li class=\"archive archive-section\"></li></p></body>"
 -- >>> entryUrlTitleDays tags
 -- [("http://d.hatena.ne.jp/hoho/20120808#12345566","OK",Just 2012-08-08)]
-entryUrlTitleDays :: [Tag String] -> [(Url, String, Maybe Day)]
+entryUrlTitleDays :: [Tag String] -> [(Url, BlogTitle, Maybe Day)]
 entryUrlTitleDays = map (\(url, title) -> (url, title, dayFromUrl url)) . entryUrlTitles
 
 -- | dayFromUrl
@@ -113,22 +113,19 @@ getEntryFromUrl url = decodeString <$> openURL url
 -- >>> let tags = parseTags "<html><head><title>aaabbbccc</title></head><body><h1>hoge</h1></body></html>"
 -- >>> blogTitle tags
 -- "aaabbbccc"
-blogTitle :: [Tag String] -> String
+blogTitle :: [Tag String] -> BlogTitle
 blogTitle = titleText . flattenTree . subTree (Just "title") Nothing . tagTree
   where
-    titleText :: [Tag String] -> String
+    titleText :: [Tag String] -> BlogTitle
     titleText (TagText title:_) = title
     titleText (_:ts) = titleText ts
     titleText _ = ""
 
 -- 指定したユーザーのblogのタイトルを取得する
-blogTitleOf :: UserName -> IO String
+blogTitleOf :: UserName -> IO BlogTitle
 blogTitleOf user = do
-  page <- openURL $ blogUrlOf user
+  page <- openURL blogUrl
   return $ blogTitle $ parseTags $ convertEncoding "EUC-JP" "UTF-8" page
+  where
+    blogUrl = baseUrl ++ user
 
--- | blogUrlOf
--- >>> blogUrlOf "suzuki"
--- "http://d.hatena.ne.jp/suzuki"
-blogUrlOf :: UserName -> String
-blogUrlOf user = baseUrl ++ user
