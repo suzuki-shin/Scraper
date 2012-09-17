@@ -1,7 +1,9 @@
 {-# OPTIONS -Wall #-}
 {-# LANGUAGE QuasiQuotes, TemplateHaskell, TypeFamilies, OverloadedStrings, GeneralizedNewtypeDeriving, GADTs, FlexibleContexts, RankNTypes #-}
+
 module Main where
 
+import Scraper
 import Scraper.Hatena
 -- import Control.Applicative
 -- import Network.HTTP
@@ -20,6 +22,10 @@ import Control.Monad.IO.Class (liftIO, MonadIO)
 import Control.Monad.Trans
 import Data.Time (Day)
 import Data.Text (Text)
+import Data.Maybe
+import Control.Monad.Trans
+-- import Control.Monad.Logger
+import Data.Time.Calendar
 
 -- data BlogType = HatenaDaiary | JugemBlog
 
@@ -34,10 +40,10 @@ Blog
 BlogEntry
     title String
     url String
-    body String
+    html String
     blog BlogId
-    postedAt Day
-    updatedAt Day
+    postedAt Day Maybe
+    updatedAt Day Maybe
     status Bool default=True
     deriving Show
 |]
@@ -45,41 +51,90 @@ BlogEntry
 dbpath :: Text
 dbpath = "scraper.sqlite3"
 
+-- runDB :: (MonadIO m, Control.Monad.Trans.Control.MonadBaseControl IO m, Control.Monad.Logger.MonadLogger m)
+--          => SqlPersist m a -> m a
 runDB action = withSqliteConn dbpath $ runSqlConn $ do
     runMigration migrateAll
     action
 
-addBlog :: String -> String -> String -> IO ()
-addBlog title url author = runDB $ do
-  blog <- insert $ Blog title url author True
+addBlog title url author = runDB $ insert $ Blog title url author True
+
+addBlogEntry title url html blogId updatedAt postedAt
+  = runDB $ insert $ BlogEntry title url html blogId updatedAt postedAt True
+
+addBlogOf :: (MonadIO (backend m), PersistStore backend m) => String -> backend m (Key backend (BlogGeneric backend1))
+addBlogOf user = do
+  title <- liftIO $ blogTitleOf user
+  insert $ Blog title ("http://d.hatena.ne.jp/" ++ user) user True
+
+addBlogEntries user blogId ((url, title, day):utds) = do
+  html <- getEntryFromUrl url
+  addBlogEntry title url html blogId day day
+  addBlogEntries user blogId utds
   return ()
+addBlogEntries _ _ [] = return ()
 
--- addBlogEntry :: [String] -> IO ()
-addBlogEntry title url body blog updatedAt postedAt = runDB $ do
-  _ <- insert $ BlogEntry title url body blog updatedAt postedAt True
+main =
+--   hateDa "Tokyo-Kuni"
+  hoge "Tokyo-Kuni"
+
+hoge user = withSqliteConn dbpath $ runSqlConn $ do
+  runMigration migrateAll
+
+  blogId <- selectFirst [BlogAuthor ==. user] [LimitTo 1]
+--   blogs <- selectList [BlogAuthor ==. user] [LimitTo 5]
+  liftIO $ print blogId
+  let bid = entityKey $ fromJust blogId
+  liftIO $ print bid
+  addBlogEntry "title A" "http://example.com" "<html><body></body></html>" bid Nothing Nothing
   return ()
-
-addBlogEntries :: [(String, String, String, BlogId, Day)] -> IO ()
-addBlogEntries ((title, url, body, blog, postedAt):xs) = do
-    addBlogEntry title url body blog postedAt postedAt
-    addBlogEntries xs
-    return ()
-
-main = do
-  hateDa "suzuki"
---   args <- getArgs
---   addBlog args
 
 hateDa :: String -> IO ()
-hateDa user = do
-  title <- blogTitleOf user
-  utds <- entryUrlTitleDaysOf user
-  runDB $ do
-    blog <- selectFirst [BlogAuthor ==. user] [LimitTo 1]
-    case blog of
-      Nothing -> do
-        _ <- insert $ Blog title (blogUrlOf user) user True
-        return ()
-      Just blog -> return ()
---   liftIO $ print (blog :: Maybe (Entity Blog))
---   return ()
+hateDa user = runDB $ do
+  -- userを指定して、Blogを検索し、
+  blogId' <- selectFirst [BlogAuthor ==. user] [LimitTo 1]
+  liftIO $ putStrLn "89"
+  liftIO $ print blogId'
+  case blogId' of
+    Nothing -> do
+      blogId <- addBlogOf user
+      liftIO $ putStrLn "94"
+      liftIO $ print blogId
+      utds <- liftIO $ entryUrlTitleDaysOf user
+      liftIO $ putStrLn "97"
+      liftIO $ print utds
+      -- blogEntryのtitle, url, updatedAtを取得して
+      liftIO $ addBlogEntries user blogId utds
+      return ()
+    Just blog -> do return ()
+
+--       utds <- liftIO $ entryUrlTitleDaysOf user
+--       -- BlogEntryを検索し存在しないもしくはupdatedAtが更新されていればhtml(html全体)を取得して保存する
+--       insertBlogEntries $ unsavedUtds utds (unKey . entityKey blog)
+--       return ()
+--     where
+--       insertBlog :: String -> IO Blog
+--       insertBlog user = do
+--         title <- liftIO $ blogTitleOf user
+--         blog <- insert $ Blog title ("http://d.hatena.ne.jp/" ++ user) user True
+--         return blog
+--       unsavedUtds :: [(Url, String, Day)] -> [(Url, String, Day)]
+--       unsavedUtds utds = snd $ filter (\(unsavedUrl, (url, title, day)) -> unsavedUrl == url) $ zip  (unsavedUrls (map fst utds)) utds
+--       insertBlogEntries ((url,title,day):utds) blogId
+--         = ((insertBlogEntry url title day blogId):(insertBlogEntries utds))
+
+-- 渡したurlsのなかからBlogEntryテーブルのurlに存在しないもののみを返す
+unsavedUrls :: [Url] -> IO [Url]
+unsavedUrls urls = runDB $ do
+  savedBlogs <- savedIn urls
+  let savedUrls = map (blogUrl . entityVal) savedBlogs
+      unsavedUrls' = filter (`notElem` savedUrls) urls
+  return unsavedUrls'
+
+-- 渡したurlsのなかでBlogEntryテーブルのurlに存在するもののみを返す
+savedIn urls = runDB $ selectList [BlogUrl <-. urls] []
+
+insertBlogEntry url title day blogId = do
+  html <- getEntryFromUrl url
+  addBlogEntry title url html blogId day day
+  return ()
