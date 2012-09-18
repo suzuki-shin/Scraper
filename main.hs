@@ -60,7 +60,9 @@ runDB action = withSqliteConn dbpath $ runSqlConn $ do
 addBlog title url author = runDB $ insert $ Blog title url author True
 
 addBlogEntry title url html blogId updatedAt postedAt
-  = runDB $ insert $ BlogEntry title url html blogId updatedAt postedAt True
+  = insert $ BlogEntry title url html blogId updatedAt postedAt True
+-- addBlogEntry title url html blogId updatedAt postedAt
+--   = runDB $ insert $ BlogEntry title url html blogId updatedAt postedAt True
 
 addBlogOf :: (MonadIO (backend m), PersistStore backend m) => String -> backend m (Key backend (BlogGeneric backend1))
 addBlogOf user = do
@@ -69,25 +71,23 @@ addBlogOf user = do
 
 addBlogEntries user blogId ((url, title, day):utds) = do
   html <- getEntryFromUrl url
-  addBlogEntry title url html blogId day day
+  runDB $ addBlogEntry title url html blogId day day
   addBlogEntries user blogId utds
   return ()
 addBlogEntries _ _ [] = return ()
 
 main =
---   hateDa "Tokyo-Kuni"
-  hoge "Tokyo-Kuni"
+  hateDa "Tokyo-Kuni"
+--   hoge "Tokyo-Kuni"
 
-hoge user = withSqliteConn dbpath $ runSqlConn $ do
-  runMigration migrateAll
-
-  blogId <- selectFirst [BlogAuthor ==. user] [LimitTo 1]
---   blogs <- selectList [BlogAuthor ==. user] [LimitTo 5]
-  liftIO $ print blogId
-  let bid = entityKey $ fromJust blogId
-  liftIO $ print bid
-  addBlogEntry "title A" "http://example.com" "<html><body></body></html>" bid Nothing Nothing
-  return ()
+hoge user =
+--   blogId <- selectFirst [BlogAuthor ==. user] [LimitTo 1]
+-- --   blogs <- selectList [BlogAuthor ==. user] [LimitTo 5]
+--   liftIO $ print blogId
+--   let bid = entityKey $ fromJust blogId
+--   liftIO $ print bid
+  addBlogEntry "title A" "http://example.com" "<html><body></body></html>" (Key (PersistInt64 1)) Nothing Nothing
+--   addBlogEntry "title A" "http://example.com" "<html><body></body></html>" bid Nothing Nothing
 
 hateDa :: String -> IO ()
 hateDa user = runDB $ do
@@ -136,5 +136,5 @@ savedIn urls = runDB $ selectList [BlogUrl <-. urls] []
 
 insertBlogEntry url title day blogId = do
   html <- getEntryFromUrl url
-  addBlogEntry title url html blogId day day
+  runDB $ addBlogEntry title url html blogId day day
   return ()
