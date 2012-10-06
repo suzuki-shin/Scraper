@@ -76,7 +76,7 @@ addBlogEntries _ _ [] = return ()
 
 main =
 --   hateDa "Tokyo-Kuni"
-  hoge "Tokyo-Kuni"
+  hoge2 "Tokyo-Kuni"
 
 hoge user = withSqliteConn dbpath $ runSqlConn $ do
   runMigration migrateAll
@@ -85,6 +85,18 @@ hoge user = withSqliteConn dbpath $ runSqlConn $ do
 --   blogs <- selectList [BlogAuthor ==. user] [LimitTo 5]
   liftIO $ print blogId
   let bid = entityKey $ fromJust blogId
+  liftIO $ print bid
+  addBlogEntry "title A" "http://example.com" "<html><body></body></html>" bid Nothing Nothing
+  return ()
+
+hoge2 user = withSqliteConn dbpath $ runSqlConn $ do
+  runMigration migrateAll
+
+  blogId <- selectFirst [BlogAuthor ==. user] [LimitTo 1]
+  liftIO $ print blogId
+  let bid = entityKey $ fromJust blogId
+--   let bid = entityKey $ fromJust blogId
+--   let bid = Key {unKey = PersistInt64 1}
   liftIO $ print bid
   addBlogEntry "title A" "http://example.com" "<html><body></body></html>" bid Nothing Nothing
   return ()
