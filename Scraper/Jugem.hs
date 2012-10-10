@@ -5,6 +5,7 @@ module Scraper.Jugem (
     lastEid
   , blogUrl
   , entryUrlsOf
+  , entryUrls
   ) where
 
 import Scraper
@@ -43,8 +44,10 @@ lastEid page = case length eids >= 1 of
     eids = page =~ "eid=([0-9]+)" :: [[String]]
 
 entryUrlsOf :: UserName -> IO [Url]
-entryUrlsOf user = do
-  let url = blogUrl user
+entryUrlsOf user = entryUrls $ blogUrl user
+
+entryUrls :: Url -> IO [Url]
+entryUrls url = do
   page <- openURL url
   case lastEid page of
     Nothing       -> return []

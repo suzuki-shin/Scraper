@@ -19,7 +19,6 @@ import Database.Persist.Store
 import Database.Persist.Sqlite
 import Database.Persist.TH
 import Control.Monad.IO.Class (liftIO, MonadIO)
-import Control.Monad.Trans
 import Data.Time (Day)
 import Data.Text (Text)
 import Data.Maybe

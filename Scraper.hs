@@ -6,6 +6,7 @@ module Scraper (
        , openURL
        , convertEncoding
        , writeFileFromUrl
+       , contentFromUrl
        , parseTagsFromFile
        , subTree
        , links
@@ -32,6 +33,11 @@ writeFileFromUrl :: Url -> FilePath -> EncodingName -> EncodingName -> IO ()
 writeFileFromUrl url fileName fromEnc toEnc = do
   page <- openURL url
   writeFile fileName $ convertEncoding fromEnc toEnc page
+
+-- contentFromUrl :: Url -> EncodingName -> EncodingName -> IO ()
+contentFromUrl url fromEnc toEnc = do
+  page <- openURL url
+  return $ convertEncoding fromEnc toEnc page
 
 parseTagsFromFile :: FilePath -> IO [Tag String]
 parseTagsFromFile fileName = do
